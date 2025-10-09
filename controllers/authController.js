@@ -51,7 +51,8 @@ const register = async (req, res) => {
                 accommodation: !!user.accommodation,
                 events: user.events || [],
                 idDocumentUrl: user.idDocumentUrl,
-                paymentScreenshotUrl: user.paymentScreenshotUrl
+                paymentScreenshotUrl: user.paymentScreenshotUrl,
+                registrationNum: user.registrationNum
             },
             token
         })
