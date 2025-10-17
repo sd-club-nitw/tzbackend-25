@@ -127,7 +127,8 @@ const login = async (req, res) => {
                 teamMembers: user.teamMembers || [],
                 events: user.events || [],
                 idDocumentUrl: user.idDocumentUrl,
-                paymentScreenshotUrl: user.paymentScreenshotUrl
+                paymentScreenshotUrl: user.paymentScreenshotUrl,
+                registrationNum: user.registrationNum
             },
             token
         });
