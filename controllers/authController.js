@@ -85,7 +85,9 @@ const register = async (req, res) => {
                 teamMembers: user.teamMembers || [],
                 events: user.events || [],
                 idDocumentUrl: user.idDocumentUrl,
-                paymentScreenshotUrl: user.paymentScreenshotUrl
+                paymentScreenshotUrl: user.paymentScreenshotUrl,
+                registrationNum: user.registrationNum
+
             },
             token
         });
@@ -129,6 +131,7 @@ const login = async (req, res) => {
                 idDocumentUrl: user.idDocumentUrl,
                 paymentScreenshotUrl: user.paymentScreenshotUrl,
                 registrationNum: user.registrationNum
+
             },
             token
         });
