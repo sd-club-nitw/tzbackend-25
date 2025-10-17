@@ -4,6 +4,12 @@ const teamMemberSchema = new mongoose.Schema({
     name: { type: String, required: true }
 }, { _id: false }); // _id: false prevents Mongoose from creating an _id for each team member
 
+const counterSchema = new mongoose.Schema({
+  name: String,
+  seq: Number
+});
+const Counter = mongoose.model('Counter', counterSchema);
+
 const userSchema = new mongoose.Schema({
     name: String,
     email: { type: String, unique: true },
