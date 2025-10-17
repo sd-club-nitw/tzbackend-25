@@ -30,7 +30,20 @@ const userSchema = new mongoose.Schema({
     },
     events: { type: [String], default: [] },
     idDocumentUrl: { type: String, default: null },
-    paymentScreenshotUrl: { type: String, default: null }
+    paymentScreenshotUrl: { type: String, default: null },
+    registrationNum: { type: String, unique: true }
 }, { timestamps: true });
+
+userSchema.pre('save', async function(next) {
+  if (this.isNew) {
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'user' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    this.registrationNum = counter.seq.toString().padStart(3, '0');
+  }
+  next();
+});
 
 module.exports = mongoose.model('User', userSchema);
