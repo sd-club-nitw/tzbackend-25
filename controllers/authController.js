@@ -1,13 +1,15 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const Event = require('../models/Event');
+const { isNitwEmail, validateUploads } = require('../middleware/registrationChecks');
 
 // Register
 const register = async (req, res) => {
     try {
         const {
             name,
-            email,
             password,
             collegeName,
             accommodation,
@@ -17,16 +19,22 @@ const register = async (req, res) => {
             idDocumentUrl = null,
             paymentScreenshotUrl = null
         } = req.body || {};
-
+        const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
         // Validation
         if (!name || !email || !password) {
             return res.status(400).json({ message: "Name, email and password are required" });
         }
-
+        const uploadError = validateUploads({ email, idDocumentUrl, paymentScreenshotUrl });
+        if (uploadError) {
+            return res.status(400).json({ message: uploadError });
+        }
         // Check if email already exists
         const exist = await User.findOne({ email });
         if (exist) {
             return res.status(400).json({ message: "Email already registered" });
+        }
+        if (password.length < 8) {
+            return res.status(400).json({ message: "Password must be at least 8 characters" });
         }
 
         // Validate team registration
@@ -49,23 +57,31 @@ const register = async (req, res) => {
                 });
             }
         }
-
+        const eventIds = [...new Set((Array.isArray(events) ? events : []).map(String))];
+        if (eventIds.length === 0 || !eventIds.every((id) => mongoose.Types.ObjectId.isValid(id))) {
+            return res.status(400).json({ message: "Select at least one valid event" });
+        }
+        const validCount = await Event.countDocuments({ _id: { $in: eventIds }, registrationOpen: true });
+        if (validCount !== eventIds.length) {
+            return res.status(400).json({ message: "One or more selected events are invalid or closed" });
+        }
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
         const accommodationBool = accommodation === true || accommodation === 'true' || accommodation === '1' || accommodation === 1;
-
+        const role = 'user'
         // Prepare user payload
         const userPayload = {
             name,
             email,
             password: hashedPassword,
+            roles : role,
             collegeName: collegeName || undefined,
             accommodation: accommodationBool,
             registrationType,
             teamMembers: registrationType === 'team' ? teamMembers : [],
-            events,
+            events: eventIds,
             idDocumentUrl,
-            paymentScreenshotUrl
+            paymentScreenshotUrl : isNitwEmail(email) ? null : paymentScreenshotUrl
         };
 
         // Create user
@@ -75,22 +91,23 @@ const register = async (req, res) => {
         const token = jwt.sign({ id: user._id }, process.env.jwt_key, { expiresIn: '1h' });
 
         // Send response
-        res.json({
-            user: {
-                name: user.name,
-                email: user.email,
-                collegeName: user.collegeName || null,
-                accommodation: !!user.accommodation,
-                registrationType: user.registrationType,
-                teamMembers: user.teamMembers || [],
-                events: user.events || [],
-                idDocumentUrl: user.idDocumentUrl,
-                paymentScreenshotUrl: user.paymentScreenshotUrl,
-                registrationNum: user.registrationNum
-
-            },
-            token
-        });
+        // res.json({
+        //     user: {
+        //         name: user.name,
+        //         email: user.email,
+        //         role: user.roles,
+        //         collegeName: user.collegeName || null,
+        //         accommodation: !!user.accommodation,
+        //         registrationType: user.registrationType,
+        //         teamMembers: user.teamMembers || [],
+        //         events: user.events || [],
+        //         idDocumentUrl: user.idDocumentUrl,
+        //         paymentScreenshotUrl: user.paymentScreenshotUrl,
+        //         registrationNum: user.registrationNum
+        //     },
+        //     token
+        // });
+        res.status(400).json({message: "registration hasn't started"})
 
     } catch (err) {
         console.error('Register error:', err);
@@ -109,33 +126,37 @@ const register = async (req, res) => {
 // Login
 const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { password } = req.body;
+        const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+        if (!email || typeof password !== 'string' || !password) {
+            return res.status(400).json({ message: "Email and password are required" });
+        }
 
         const user = await User.findOne({ email });
         if (!user) return res.status(400).json({ message: "User not found" });
 
         const match = await bcrypt.compare(password, user.password);
         if (!match) return res.status(400).json({ message: "Incorrect Password" });
-
         const token = jwt.sign({ id: user._id }, process.env.jwt_key, { expiresIn: '1h' });
 
-        res.json({
-            user: {
-                name: user.name,
-                email: user.email,
-                collegeName: user.collegeName || null,
-                accommodation: !!user.accommodation,
-                registrationType: user.registrationType,
-                teamMembers: user.teamMembers || [],
-                events: user.events || [],
-                idDocumentUrl: user.idDocumentUrl,
-                paymentScreenshotUrl: user.paymentScreenshotUrl,
-                registrationNum: user.registrationNum
+        // res.json({
+        //     user: {
+        //         name: user.name,
+        //         email: user.email,
+        //         role: user.roles,
+        //         collegeName: user.collegeName || null,
+        //         accommodation: !!user.accommodation,
+        //         registrationType: user.registrationType,
+        //         teamMembers: user.teamMembers || [],
+        //         events: user.events || [],
+        //         idDocumentUrl: user.idDocumentUrl,
+        //         paymentScreenshotUrl: user.paymentScreenshotUrl,
+        //         registrationNum: user.registrationNum
 
-            },
-            token
-        });
-
+        //     },
+        //     token
+        // });
+        res.status(400).json({message: "registration hasn't started"})
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ message: err.message });
